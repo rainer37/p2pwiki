@@ -22,27 +22,45 @@ Limitations
   full title of the article they wish to view. Partly mitigated by having the article
   directory (but it could be out-of date, even if article creation is broadcast to
   all nodes -- some might be down during the broadcast).
+- The number of article replication is static as proportional to the MAX_NUMBER_OF_NODES
+  that the system can support. However, the optimal number should be based on the current
+  number of living nodes, and based on the nodes' "liveness" (average uptime).
+- All peers have equal permission to read/modify any articles. Malicious peers could be very
+  distructive. May introduce the blacklist, or peer-reviews on large modification.
 
 ## _Questions_
-- Q: How will the web server get the IP addresses?
-- A: _It will know the address of the node sending the health report (and possibly the cached
+- Q1: How will the web server get the IP addresses?
+- A1: _It will know the address of the node sending the health report (and possibly the cached
    IP address in the status file)._
-- Q: How will the app get the IP addresses?
-- A: _Request it during `init` operation._
-- Q: Are IP addresses going to be sufficient identifiers (i.e. if we want to blacklist
+   
+- Q2: How will the app get the IP addresses?
+- A2: _Request it during `init` operation._
+
+- Q3: Are IP addresses going to be sufficient identifiers (i.e. if we want to blacklist
    apps that make bad changes to articles then we will need to include some identifying
    information with the articles about who modified it -- IP addresses change)
-- Q: Is the server smart enough to make sure it doesn't tell every new app to join
+- A3: Adding MAC address may relief the problem.
+
+- Q4: Is the server smart enough to make sure it doesn't tell every new app to join
    to the same peer?
-- Q: Could the server provide some health information about the p2p network?
-- A: _Nodes can send their health report periodically._
-- Q: Could some nodes become blacklisted? (This information could be stored on the
+- A4: 
+
+- Q5: Could the server provide some health information about the p2p network?
+- A5: _Nodes can send their health report periodically._
+
+- Q6: Could some nodes become blacklisted? (This information could be stored on the
    server and made available to apps that at as hosts when a new app joins)
-- Q: The server is now a single point of failure (although operation of the existing
+- A6: If using IP as the only identifier, this blacklist is not so useful, and could be
+     misleading. 
+      
+- Q7: The server is now a single point of failure (although operation of the existing
    peers should NOT be affected by its failure)
-- Q: Choosing values for Chord parameters (how often to run stabilize, fix, etc.; the
-length of successor list; number of finger table entries; etc.) (**all** params for chord/the app need
-to be listed)
+- A7: A more robust server can be used. 
+
+- Q8: Choosing values for Chord parameters (how often to run stabilize, fix, etc.; 
+     the length of successor list; number of finger table entries; etc.) (**all** params for 
+     chord/the app need to be listed)
+- A8: 
 
 
 
@@ -111,18 +129,53 @@ What the app does during startup?
 ## Stopping the app
 To stop the app, send the app a `SIGTERM`.
 
-What does the app do during shutdown?
+What does the app do during normal shutdown(voluntary leave)?
+1. Replicate all the original articles AND replicated articles to successor.
+3. Tell server about leaving, to remove its IP from server's list.
+4. Log useful information.
+
+If any operation cannot be complete due to network partition, retry the operation ??ONCE??.
+If still not work, then just shutdown, we can handle this as a fail stop.
 
 ## Fail stop
 What does the app do if it fails?
+- Author Down:
+- Q1: Who should be the new author?
+- A1: 1. LookUp the title by the hash, and find the one that is alive, but need some way to get content of article.
+      2. Nearest replica. Probably not.
+- Q2: How do other peers/replicas know the failure of author?
+- A2: They don't util they try to lookup the articles.
+- Q3: Which version the peers should use if the author's down?
+- A3: Use no one util the new author is up.
+
+### May be we need an author election algo.
+
+- Replica Down:
+- Q1: Does author need to know that? and how?
+- A1: Health report. Routine check.
+- Q2: 
+
+- Q: How does the server knows about the failure?
+
 How does it recover during startup?
+Try to read the logs if there is one, and broadcast for informaiton to SOME peers.
+### May be we need a recover algo as well.(What info to request for?)
 How is the p2p network affected?
+Short period of delay on some articles look up.
 
 Q: What happens if node with original article is down indefinitely (i.e. uninstalled)?
 Does title_repl become considered the new article and get replicated as title_repl_repl??
+A: 
 
 ## Chord Operations
 _TODO Outline the Chord operations_
+- JOIN: 
+- STABLIZE:
+- NOTIFY:
+- GET_SUCCESSOR:
+- GET_PREDECESSOR:
+- FIX_FINGERS:
+- LEAVE:
 
 ## Article Operations
 Operations built on top of the Chord protocol will use RPCs. Chord operations (lookup,
